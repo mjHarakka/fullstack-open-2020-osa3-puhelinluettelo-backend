@@ -1,5 +1,18 @@
 const express = require('express')
 const app = express()
+const cors = require('cors')
+const morgan = require('morgan')
+
+app.use(cors())
+app.use(express.json())
+app.use(morgan('tiny'))
+app.use(express.static('build'))
+
+
+PORT = process.env.PORT || 3001
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+})  
 
 let persons = [
     { 
@@ -56,35 +69,37 @@ app.delete('/persons/:id', (req, res) => {
 
 app.post('/persons', (req, res) => {
   const body = req.body
+  
+  console.log(body)
 
   if (!body.name) {
     return response.status(400).json({ 
-      error: 'Number is missing!' 
+      error: 'Name is missing!' 
     })
   } else if (!body.number) {
     return response.status(400).json({ 
       error: 'Number is missing!' 
     })
   }
-  
-  const person = {
-    name: body.name,
-    number: body.number,
-    id: generateId(),
+
+  const generateId = () => {
+      return Math.random() * (25000- 1) + 1; 
   }
 
-  if (persons.find(person => person.name === name)) {
-    return response.status(400).json({
+  person = {
+    name: body.name,
+    number: body.number,
+    id: Number.parseInt(generateId())
+  }
+
+  if (persons.find(person => person.name === body.name)) {
+    return res.status(400).json({
       error: 'Name is already in phonebook!'
     })
   } else {
     persons = persons.concat(person)
   }
 
-  response.json(person)
+  res.json(person)
 })
 
-const PORT = 3001
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})  
