@@ -1,0 +1,3 @@
+[submodule "osa3-puhelinluettelo-backend"]
+	path = osa3-puhelinluettelo-backend
+	url = https://github.com/mjHarakka/fullstack-open-2020
