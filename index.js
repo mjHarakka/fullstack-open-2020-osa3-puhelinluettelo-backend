@@ -1,105 +1,85 @@
-const express = require('express')
-const app = express()
-const cors = require('cors')
-const morgan = require('morgan')
+const express = require("express");
+const app = express();
+const cors = require("cors");
+const morgan = require("morgan");
+const mongoose = require("mongoose");
+const { response } = require("express");
 
-app.use(cors())
-app.use(express.json())
-app.use(morgan('tiny'))
-app.use(express.static('build'))
+app.use(cors());
+app.use(express.json());
+app.use(morgan("tiny"));
+app.use(express.static("build"));
 
-
-PORT = process.env.PORT || 3001
+PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`)
-})  
+  console.log(`Server running on port ${PORT}`);
+});
 
-let persons = [
-    { 
-    "name": "Arto Hellas", 
-    "number": "040-123456",
-    "id": 1
-    },
-    { 
-    "name": "Ada Lovelace", 
-    "number": "39-44-5323523",
-    "id": 2
-    },
-    { 
-    "name": "Dan Abramov", 
-    "number": "12-43-234345",
-    "id": 3
-    },
-    { 
-    "name": "Mary Poppendieck", 
-    "number": "39-23-6423122",
-    "id": 4
-    }
-]
+const password = "AlpakkaPaskooNurtsille";
 
-app.get('/', (req, res) => {
-  res.send('<h1>Hello World!</h1>')
-})
+//db connection url
+const url = `mongodb+srv://mikko:${password}@cluster0.duudm.mongodb.net/test?retryWrites=true&w=majority`;
 
-app.get('/info', (req, res) => {
-    res.send('Phonebook has info for ' + persons.length + " people <br><br> " + new Date() )
-  })
+mongoose.connect(url, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+  useFindAndModify: false,
+  useCreateIndex: true,
+});
 
-app.get('/persons', (req, res) => {
-  res.json(persons)
-})
+const personSchema = new mongoose.Schema({
+  name: String,
+  number: Number,
+});
 
-app.get('/persons/:id', (req, res) => {
-  const id = Number(req.params.id)
-  const person = persons.find(person => person.id === id)
-  
-  if (person) {
-    res.json(person)
-  } else {
-    res.status(404).end()
-  }
-})
+const Person = mongoose.model("Person", personSchema);
 
-app.delete('/persons/:id', (req, res) => {
-  const id = Number(req.params.id)
-  persons = persons.filter(person => person.id !== id)
+app.get("/", (req, res) => {
+  res.send("<h1>Hello World!</h1>");
+});
 
-  response.status(204).end()
-})
+app.get("/info", (req, res) => {
+  res.send(
+    "Phonebook has info for " +
+      persons.length +
+      " people <br><br> " +
+      new Date()
+  );
+});
 
-app.post('/persons', (req, res) => {
-  const body = req.body
-  
-  console.log(body)
+app.get("/persons", (req, res) => {
+  Person.find({}).then((persons) => {
+    res.json(persons);
+  });
+});
 
-  if (!body.name) {
-    return response.status(400).json({ 
-      error: 'Name is missing!' 
+app.post("/persons", (req, res) => {
+  new Person({
+    name: req.body.name,
+    number: req.body.number,
+  }).save();
+});
+
+app.delete("/persons/:id", (req, res, next) => {
+  const { id } = req.params;
+
+  Person.findByIdAndRemove(id)
+    .then(() => {
+      res.status(204).end();
     })
-  } else if (!body.number) {
-    return response.status(400).json({ 
-      error: 'Number is missing!' 
+    .catch((error) => next(error));
+});
+
+app.get("/api/persons/:id", (req, res, next) => {
+  const { id } = req.params;
+
+  Person.findById(id)
+    .then((person) => {
+      if (person) {
+        res.json(person.toJSON());
+      } else {
+        res.status(404).end();
+      }
     })
-  }
-
-  const generateId = () => {
-      return Math.random() * (25000- 1) + 1; 
-  }
-
-  person = {
-    name: body.name,
-    number: body.number,
-    id: Number.parseInt(generateId())
-  }
-
-  if (persons.find(person => person.name === body.name)) {
-    return res.status(400).json({
-      error: 'Name is already in phonebook!'
-    })
-  } else {
-    persons = persons.concat(person)
-  }
-
-  res.json(person)
-})
-
+    .catch((error) => next(error));
+});
