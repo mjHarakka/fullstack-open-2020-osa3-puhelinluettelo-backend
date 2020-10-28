@@ -1,86 +1,98 @@
 const express = require("express");
-const app = express();
 const cors = require("cors");
+const app = express();
 const morgan = require("morgan");
-const mongoose = require("mongoose");
 
 app.use(cors());
 app.use(express.json());
-app.use(morgan("tiny"));
-app.use(express.static("build"));
 
-morgan.token("body", req => JSON.stringify(req.body));
+morgan.token("host", (req, res) => req.hostname);
 
-PORT = process.env.PORT || 3001;
-app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
-});
+morgan.token("token", (req, res) => res.resBody);
 
-const password = "AlpakkaPaskooNurtsille";
+app.use(
+  morgan(
+    ":method :host :token :status :res[content-length] - :response-time ms"
+  )
+);
 
-//db connection url
-const url = `mongodb+srv://mikko:${password}@cluster0.duudm.mongodb.net/test?retryWrites=true&w=majority`;
+let persons = [
+  {
+    id: 1,
+    name: "miksa",
+    number: "01212345",
+  },
+  {
+    id: 2,
+    name: "ada",
+    number: "5216512",
+  },
+  {
+    id: 3,
+    name: "teppo tulppu",
+    number: "123888999",
+  },
+];
 
-mongoose.connect(url, {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-  useFindAndModify: false,
-  useCreateIndex: true,
-});
-
-const personSchema = new mongoose.Schema({
-  name: String,
-  number: Number,
-});
-
-const Person = mongoose.model("Person", personSchema);
+const generateId = () => {
+  const maxId = persons.length > 0 ? Math.max(...persons.map((n) => n.id)) : 0;
+  return maxId + 1;
+};
 
 app.get("/info", (req, res) => {
-  Person.estimatedDocumentCount({})
-    .then((count) => {
-      const message =
-        `Phonebook has info for ${count} people ` + `${new Date()}`;
-      res.send(message);
-    })
-    .catch((err) => {
-      console.error(err);
-      next(err);
-    });
+  res.send(`Phonebook has info for ${persons.length} people - ${new Date()}`);
 });
 
-app.get("/api/persons", (request, response) => {
-  Person.find({}).then(persons => {
-    response.json(persons.map(person => person.toJSON()));
-  });
+app.get("/api/persons", (req, res) => {
+  res.json(persons);
+});
+
+app.get("/api/persons/:id", (req, res) => {
+  const id = Number(req.params.id);
+  const person = persons.find((person) => person.id === id);
+
+  if (person) {
+    res.json(person);
+  } else {
+    res.status(404).end();
+  }
+});
+
+app.delete("/api/persons/:id", (req, res) => {
+  const id = Number(req.params.id);
+  persons = persons.filter((person) => person.id !== id);
+
+  res.status(204).end();
 });
 
 app.post("/api/persons", (req, res) => {
-  new Person({
-    name: req.body.name,
-    number: req.body.number,
-  }).save();
+  console.log(req.body);
+  const body = req.body;
+
+  if (!body.name) {
+    return res.status(400).json({
+      error: "name missing",
+    });
+  }
+
+  if (!body.number) {
+    return res.status(400).json({
+      error: "number missing",
+    });
+  }
+
+  const person = {
+    id: generateId(),
+    name: body.name,
+    number: body.number,
+  };
+
+  persons = persons.concat(person);
+
+  res.json(person);
 });
 
-app.delete("/api/persons/:id", (req, res, next) => {
-  const { id } = req.params;
-
-  Person.findByIdAndRemove(id)
-    .then(() => {
-      res.status(204).end();
-    })
-    .catch((error) => next(error));
-});
-
-app.get("/api/persons/:id", (req, res, next) => {
-  const { id } = req.params;
-
-  Person.findById(id)
-    .then((person) => {
-      if (person) {
-        res.json(person.toJSON());
-      } else {
-        res.status(404).end();
-      }
-    })
-    .catch((error) => next(error));
+const PORT = 3001;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });
