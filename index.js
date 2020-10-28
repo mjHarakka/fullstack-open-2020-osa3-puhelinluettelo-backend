@@ -3,12 +3,13 @@ const app = express();
 const cors = require("cors");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
-const { response } = require("express");
 
 app.use(cors());
 app.use(express.json());
 app.use(morgan("tiny"));
 app.use(express.static("build"));
+
+morgan.token("body", req => JSON.stringify(req.body));
 
 PORT = process.env.PORT || 3001;
 app.listen(PORT, () => {
@@ -34,33 +35,33 @@ const personSchema = new mongoose.Schema({
 
 const Person = mongoose.model("Person", personSchema);
 
-app.get("/", (req, res) => {
-  res.send("<h1>Hello World!</h1>");
-});
-
 app.get("/info", (req, res) => {
-  res.send(
-    "Phonebook has info for " +
-      persons.length +
-      " people <br><br> " +
-      new Date()
-  );
+  Person.estimatedDocumentCount({})
+    .then((count) => {
+      const message =
+        `Phonebook has info for ${count} people ` + `${new Date()}`;
+      res.send(message);
+    })
+    .catch((err) => {
+      console.error(err);
+      next(err);
+    });
 });
 
-app.get("/persons", (req, res) => {
-  Person.find({}).then((persons) => {
-    res.json(persons);
+app.get("/api/persons", (request, response) => {
+  Person.find({}).then(persons => {
+    response.json(persons.map(person => person.toJSON()));
   });
 });
 
-app.post("/persons", (req, res) => {
+app.post("/api/persons", (req, res) => {
   new Person({
     name: req.body.name,
     number: req.body.number,
   }).save();
 });
 
-app.delete("/persons/:id", (req, res, next) => {
+app.delete("/api/persons/:id", (req, res, next) => {
   const { id } = req.params;
 
   Person.findByIdAndRemove(id)
