@@ -6,13 +6,11 @@ const morgan = require("morgan");
 app.use(cors());
 app.use(express.json());
 
-morgan.token("host", (req, res) => req.hostname);
-
 morgan.token("token", (req, res) => res.resBody);
 
 app.use(
   morgan(
-    ":method :host :token :status :res[content-length] - :response-time ms"
+    ":method :status :url: :status :res[content-length] - :response-time ms :token"
   )
 );
 
